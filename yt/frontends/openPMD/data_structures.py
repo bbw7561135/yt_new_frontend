@@ -171,7 +171,7 @@ class OpenPMDDataset(Dataset):
 	self.particle_types = tuple(self.particle_types)
         self.particle_types_raw = self.particle_types
 
-    # This load a HDF5-Datei into a _handle object
+    # This load a HDF5-file into a _handle object
     # All _handle objects refers to the file
 	self._handle = HDF5FileHandler(filename)
         Dataset.__init__(self, filename, dataset_type,
