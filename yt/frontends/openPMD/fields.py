@@ -20,19 +20,18 @@ import yt.utilities.physical_constants
 from yt.fields.field_info_container import \
     FieldInfoContainer
 
-
-# Funktionen zum Berechnen neuer Felder aus bereits bekannten Daten.
-# Wenn eine Funktion einen Fehler erzeugt wird diese Feld nicht berechnet.
+# Function to calculate new fields out of other fields
+# if a error occurs the field is not calculated
 
 def _kinetic_energy(field, data):
     #calculate kinetic energy out of momentum
     c = 2.997e8 # velocity of light
     ke =       ( data["particle_momentum_x"]**2
                + data["particle_momentum_y"]**2
-               + data["particle_momentum_z"]**2) * c 
+               + data["particle_momentum_z"]**2) * c
     return ke
 
-# Diese Funktion funktioniert noch nicht!
+# This function does no work !!
 def setup_momentum_to_velocity(self, ptype):
         def _get_vel(axis):
             def velocity(field, data):
@@ -40,7 +39,7 @@ def setup_momentum_to_velocity(self, ptype):
 		moment = data[ptype,"particle_momentum_%" % axis]
                 return moment / ((data[ptype,"particle_mass"]*data[ptype,"particle_weighting"])**2 + (moment**2)/(c**2))**0.5
             return velocity
-	
+
         for ax in 'xyz':
             self.add_field((ptype, "particle_velocity_%s" % ax),
                            function=_get_vel(ax),
@@ -53,16 +52,16 @@ def setup_poynting_vector(self):
 		Efieldy = data["E_y"]
 		Efieldz = data["E_z"]
 		Bfieldx = data["B_x"]
-		Bfieldy = data["B_y"]		
+		Bfieldy = data["B_y"]
 		Bfieldz = data["B_z"]
-		
+
 		u = 79577.4715459 # = 1/magnetic permeability
 
 		if(axis == 'x'):
 		    return u * (Efieldy *Bfieldz-Efieldz*Bfieldy)
 		elif(axis == 'y'):
 		    return u * (Efieldz *Bfieldx-Efieldx*Bfieldz)
-		elif(axis == 'z'):                
+		elif(axis == 'z'):
 		    return u * (Efieldx *Bfieldy-Efieldy*Bfieldx)
 
             return poynting
@@ -77,10 +76,9 @@ def setup_poynting_vector(self):
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
-# Diese Klasse legt fest, welche Felder und Partikelfelder in der HDF5-Datei enthalten sein koennen.
-# Die Feldnamen muessen mit den Namen in "OpenPMDHierarchy" in data_structures.py 
-# zusammenpassen. Die hier vergebenen Einheiten sind spaeter Einheiten der Felder.
-# Weiterhin koennen Funktionen zum Berechnen neuer Felder fest gelegt werden
+# This class defines, which fields and particle fields could be in the HDF5-file
+# The field names have to match the names in "OpenPMDHierarchy" in data_structures.py
+# This also define the units of the fields
 
 
 class OpenPMDFieldInfo(FieldInfoContainer):
@@ -93,17 +91,17 @@ class OpenPMDFieldInfo(FieldInfoContainer):
 	("E_x", ("V/m", [], None)),
 	("E_y", ("V/m", [], None)),
 	("E_z", ("V/m", [], None)),
-	("J_x", ("A/m**2", [], None)), 
+	("J_x", ("A/m**2", [], None)),
 	("J_y", ("A/m**2", [], None)),
 	("J_z", ("A/m**2", [], None)),
-	("rho", ("kg*s/m**3.0", [], None)), 
+	("rho", ("kg*s/m**3.0", [], None)),
 
    )
 
     known_particle_fields = (
         # Identical form to above
-        # ( "name", ("units", ["fields", "to", "alias"], # "display_name")), 
-	("particle_charge", ("A*s", [], None)),	
+        # ( "name", ("units", ["fields", "to", "alias"], # "display_name")),
+	("particle_charge", ("A*s", [], None)),
 	("particle_mass", ("kg", [], None)),
 	("particle_momentum_x", ("kg*m/s", [], None)),
         ("particle_momentum_y", ("kg*m/s", [], None)),
@@ -114,8 +112,8 @@ class OpenPMDFieldInfo(FieldInfoContainer):
 	("particle_positionOffset_x", ("m", [], None)),
         ("particle_positionOffset_y", ("m", [], None)),
         ("particle_positionOffset_z", ("m", [], None)),
-	("particle_weighting", ("", [], None)), 
-	("particle_kinetic_energy", ("dimensionless", [], None)), 
+	("particle_weighting", ("", [], None)),
+	("particle_kinetic_energy", ("dimensionless", [], None)),
 
    )
 
@@ -123,28 +121,23 @@ class OpenPMDFieldInfo(FieldInfoContainer):
     def __init__(self, ds,field_list):
         super(OpenPMDFieldInfo, self).__init__(ds, field_list)
         # If you want, you can check field_list
- 
-    # Hier koennen Funktionen festgelegt werden, die aus den vorhandenen Feldern
-    # neue berechnen z. B. aus E-Feld und B-Feld Vektor den Poyntingvektor berechnen
+
+    # Here you can create functions to calculate out of existing fields the
+    # values of new fields e.g. calculate out of E-field and B-field the
+    # poyntingvektor
     def setup_fluid_fields(self):
         # Here we do anything that might need info about the dataset.
         # You can use self.alias, self.add_output_field and self.add_field .
-	
-	
+
+
 	setup_poynting_vector(self)
-	
-    # Hier koennen Funktionen festgelegt werden, die aus den vorhandenen Partikelfeldern
-    # neue berechnen z. B. aus Masse und Impuls die Geschwindigkeit berechnen
-    # !!! Es muss die Funktion der Vaterklasse aufgerufen werden, sonst werden keine Partikel geladen
+
+    # !!! You have to call the function of the parent class to load particles
     def setup_particle_fields(self, ptype):
         # This will get called for every particle type.
-	
+
 	self.add_field((ptype,"particle_kinetic_energy"),function=_kinetic_energy,units="dimensionless")
 	setup_momentum_to_velocity(self, ptype)
 
-	# !!! Muss aufgerufen werden damit Partikel geladen werden
+    # !!! Have to be called to load particles
 	super(OpenPMDFieldInfo, self).setup_particle_fields(ptype)
-	
-     
-
-    

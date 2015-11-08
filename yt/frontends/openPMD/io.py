@@ -28,24 +28,24 @@ _convert_mass = ("particle_mass","mass")
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
-# Diese Klasse laedt die Daten aus der HDF5 Datei. Dabei koennen die Daten chunkweise
-# aus der Datei geladen werden, was aber noch nicht implementiert ist und fuer Parallelisierung
-# dringen notwendig ist.
+# This class load the file out of the HDF5-file. The file could be loaded chunk
+# for chunk. This is actually not implemented and is necessary for paralism
+
 
 class IOHandlerOpenPMD(BaseIOHandler):
     _dataset_type = "openPMD"
     _field_dtype = "float32"
 
     def __init__(self, ds, *args, **kwargs):
-        
+
 	self.ds = ds
-	# ds._handle entspricht einer HDF5-Datei, die mit  h5py.File(filename) geladen wurde
-	self._handle = ds._handle 
+    # ds._handle is a HDF5-file which is loaded with h5py.File(filename)
+	self._handle = ds._handle
 	self.basePath = self._handle["/"].attrs["basePath"]
 	self.meshPath = self._handle["/"].attrs["meshesPath"]
 	self.particlesPath = self._handle["/"].attrs["particlesPath"]
 
-    # Diese Funktion liest die Koordinaten der Partikel aus der Datei
+    # This function read the coords of the particles out of the file
     def _read_particle_coords(self, chunks, ptf):
         # This needs to *yield* a series of tuples of (ptype, (x, y, z)).
         # chunks is a list of chunks, and ptf is a dict where the keys are
@@ -54,44 +54,45 @@ class IOHandlerOpenPMD(BaseIOHandler):
 
 	chunks = list(chunks)
 	self._array_fields = {}
-	# Ein Chunk liefert ein Grid Element zurueck, das selbst den Dateinamen liefert
+    # A chunk returns a grid element with a filename
         for chunk in chunks: # These should be organized by grid filename
             f = None
-            for g in chunk.objs: 
+            for g in chunk.objs:
                 if g.filename is None: continue
-		
+
                 if f is None:
                     #print "Opening (count) %s" % g.filename
 
-		    #oeffnet HDF5-Datei zum lesen
+		    #open HDF5-file to read
                     f = h5py.File(g.filename, "r")
-                
+
                 dds = f.get(f.attrs["basePath"])
 		for ptype, field_list in sorted(ptf.items()):
-		    # ptf.items() gib eine Liste aller bekannten Partikelfelder mit dem Partikeltyp zurueck
+		    # ptf.items() returns a list with all known particle fields
+            # and particle types
 
                     #print field_list
-		    if field_list == "particle_mass":  # weiss nicht ob das benoetigt wird
+		    if field_list == "particle_mass":  # do not know if necessary
 			continue
 		    pds = dds.get("%s/%s" % (f.attrs["particlesPath"], ptype))
-                   
-                    
-                    # liest Partikelkoordinaten aus der Datei
+
+
+                    # read particle coords out of file
                     x, y, z = (np.asarray(pds.get("position/" + ax).value, dtype="=f8")
                                for ax in 'xyz')
                     for field in field_list:
-			# Speichert die Groesse der Partikelfelder
+            # Save the size of the particle fields
 			nfield = field.replace("particle_","")
 			nfield = nfield.replace("_","/")
 			#print "Field " + nfield
 
                         if np.asarray(pds[nfield]).ndim > 1:
                             self._array_fields[field] = pds[nfield].shape
-		    # Gibt die Koordinaten der Partikel zurueck
+            # Returns the coords of the particle
                     yield ptype, (x, y, z)
             if f: f.close()
 
-    #Diese Funktion liest die Partikelfelder aus der Datei
+    # This function read the particle fields out of file
     def _read_particle_fields(self, chunks, ptf, selector):
         # This gets called after the arrays have been allocated.  It needs to
         # yield ((ptype, field), data) where data is the masked results of
@@ -100,7 +101,7 @@ class IOHandlerOpenPMD(BaseIOHandler):
         # you need to do your masking here.
 	#print "readPartField"
 	chunks = list(chunks)
-	# Ein Chunk liefert ein Grid Element zurueck, das selbst den Dateinamen liefert
+    # A chunk returns a grid element wiht a file name
         for chunk in chunks: # These should be organized by grid filename
             f = None
             for g in chunk.objs:
@@ -108,39 +109,40 @@ class IOHandlerOpenPMD(BaseIOHandler):
                 if f is None:
                     #print "Opening (count) %s" % g.filename
 
-		    #oeffnet HDF5-Datei zum lesen
+		    #open a HDF5-file to read
                     f = h5py.File(u(g.filename), 'r')
                     #print g.filename + " io.py"
                 ds = f.get(f.attrs["basePath"])
 		for ptype, field_list in sorted(ptf.items()):
-		    # ptf.items() gib eine Liste aller bekannten Partikelfelder mit dem Partikeltyp zurueck
+            # ptf.items() returns a list of all known particle fields and
+            # particle types
                     pds = ds.get("%s/%s/" % (f.attrs["particlesPath"],ptype))
-                   
-		    # Die Partikelkoordinaten muessen erneut geladen werden
+
+            # The particle coords have to be loaded again
                     x, y, z = (np.asarray(pds.get("position/" + ax).value, dtype="=f8")
                                for ax in 'xyz')
-		    # Legt die Maske zur Maskierung an
+
                     mask = selector.select_points(x, y, z, 0.0)
                     if mask is None: continue
                     for field in field_list:
 			nfield = field.replace("particle_","")
 			nfield = nfield.replace("_","/")
-			# Laedt die Feldinformationen aus der Datei
-			#!!!Hier noch unvollstaendig da Masse und Ladung als Attribut und der Rest 
-			# als Array gelesen wird                        
+            # Load the field informations out of file
+            # !!! Incomplete because mass and charge are a attributes and
+            # the rest are arrays
 			if field == "particle_mass" or field == "particle_charge":
 			    data = np.full(x.shape[0],pds.get(nfield).attrs["value"], "=f8")
 			else:
 			    data = np.asarray(pds.get(nfield), "=f8")
-			# Hier koennte weightening mit der Masse multipliziert werden
+            # Here you could multiply mass with weightening
                         #if field in _convert_mass:
                         #    data *= g.dds.prod(dtype="f8")
-			
-			# Hier wird Partkeltyp, Feldname und die maskierten Felddaten zurueckgegeben
+
+            # This returns particle type, field name and the masked field data
                         yield (ptype, field), data[mask]
             if f: f.close()
 
-    # Diese Funktion liest die restlichen Felder aus der Datei
+    # This function read the rest of the fields out of file
     def _read_fluid_selection(self, chunks, selector, fields, size):
         # This needs to allocate a set of arrays inside a dictionary, where the
         # keys are the (ftype, fname) tuples and the values are arrays that
@@ -156,12 +158,12 @@ class IOHandlerOpenPMD(BaseIOHandler):
             if not (len(chunks) == len(chunks[0].objs) == 1):
                 raise RuntimeError
             g = chunks[0].objs[0]
-	    # Es wird wieder die Datei geoeffnet
+        # Open the file
             f = h5py.File(u(g.filename), 'r')
 	    for ftype, fname in fields:
-		#Daten werden ueber _read_data Funktion geladen
+        # Data is loaded with the _read_data function
                 rv[ftype, fname] = self._read_data(g, fname)
-		
+
 	    f.close()
 	    #print rv
             return rv
@@ -174,34 +176,34 @@ class IOHandlerOpenPMD(BaseIOHandler):
             fsize = size
             rv[field] = np.empty(fsize, dtype="float64")
         ng = sum(len(c.objs) for c in chunks)
-	#print "Reading %s cells of %s fields in %s grids",size, [f2 for f1, f2 in fields], ng       
-	
+	#print "Reading %s cells of %s fields in %s grids",size, [f2 for f1, f2 in fields], ng
+
         ind = 0
         for chunk in chunks:
             for g in chunk.objs:
-		# Es wird wieder die Datei geoeffnet
+        # Open file
                 f = h5py.File(u(g.filename), 'r')
 	        for ftype, fname in fields:
-		    #Daten werden ueber _read_data Funktion geladen
+        # Data is loaded with the _read_data function
 		    rv[ftype, fname] = self._read_data(g, fname)
-		
+
 	        f.close()
-		
+
         return rv
-    # Diese Funktion liest die Felddaten aus der Datei
+
+    # This function read the field data out of file
     def _read_data(self, grid, field):
-	
+
 	data = []
 	if field.startswith("particle") :
-	    # Partikel werden hier nicht geladen
+        # particles are not loaded here
 	    #data = self._handle[self.basePath+self.particlesPath+field.replace("_","/")]
 	    pass
 	else:
-	    # Hier werden die Daten gelesen
+        # This read the file
 	    data = self._handle[self.basePath+self.meshPath+field.replace("_","/")]
         return np.array(data).flatten()
-    
-    # Diese Funktion sollte zu Caching benutz werden hat aber momentan keine Funktion
+    # This function is for caching. Actually this function does not work
     def _read_chunk_data(self, chunk, fields):
         # This reads the data from a single chunk, and is only used for
         # caching.
@@ -233,5 +235,3 @@ class IOHandlerOpenPMD(BaseIOHandler):
                 for i, g in enumerate(gs):
                     rv[g.id][field] = np.asarray(data[...,i], "=f8")
         return rv
-
-

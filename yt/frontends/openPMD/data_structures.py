@@ -29,23 +29,25 @@ import h5py
 import numpy as np
 import os
 
-# Diese Klasse legt die Eigenschaften eines Grids fest
-# Momentan gibt nur ein Grid, das die ganze Simulationsbox belegt
+# This class defines the characteristics of the grids
+# Actually there is only one grid for the whole simolation box
+
 class OpenPMDGrid(AMRGridPatch):
     _id_offset = 0
     __slots__ = ["_level_id"]
     def __init__(self, id, index, level = -1):
         AMRGridPatch.__init__(self, id, filename = index.index_filename,
                               index = index)
-	# Da es nur ein Grid gibt, sind keine Kinder- oder Elterngrids vorhanden
+    # There is only one grid. So there are no parent or child grids
         self.Parent = None
         self.Children = []
         self.Level = level
 
     def __repr__(self):
         return "OpenPMDGrid_%04i (%s)" % (self.id, self.ActiveDimensions)
-# legt welche Felder und Partikel angelegt und von der Festplatte gelesen werden
-# Ausserdem werden die Eigenschaften der Grids festgelegt
+# Defines which fields and particles are created and read from the hard disk
+# Furthermore it defines the characteristics of the grids
+
 class OpenPMDHierarchy(GridIndex):
     grid = OpenPMDGrid
 
@@ -57,8 +59,8 @@ class OpenPMDHierarchy(GridIndex):
         self.directory = os.path.dirname(self.index_filename)
         GridIndex.__init__(self, ds, dataset_type)
 
-    # Prueft welche Felder und Partikelfelder in der Datein enthalten sind und legt
-    # somit fest, wie die Felder spaeter in yt heissen
+    # Test which fields and particle fields are in the file and defines the names of fields in yt
+
     def _detect_output_fields(self):
         # This needs to set a self.field_list that contains all the available,
         # on-disk fields.
@@ -72,7 +74,7 @@ class OpenPMDHierarchy(GridIndex):
 	particlesPath = self.dataset._handle.attrs["particlesPath"]
         output_fields = []
 
-	#Liest die Namen der allgemeinen Felder und fuegt sie output_fields hinzu
+    # Read the names of the non-particle fields and add them to output_fields
 	for group in self.dataset._handle[basePath+meshesPath].keys():
 	    try:
 		for direction in self.dataset._handle[basePath+meshesPath+group].keys():
@@ -80,43 +82,42 @@ class OpenPMDHierarchy(GridIndex):
 	    except:
 		output_fields.append(group)
 
-	# fuegt die Namen zusammen mit dem Frontend der field_list hinzu
+    # add the names to field_list
         self.field_list = [("openPMD", str(c)) for c in output_fields]
 
         # look for particle fields
         particle_fields = []
-        
-	# Hier werden die Partikelarten und Namen der Partikelfelder aus der Datei gelesen
+
+    # The following code read the particle type and the name of the particle field out of the file
 	for particle_type in self.dataset._handle[basePath+particlesPath].keys():
 	    for group in self.dataset._handle[basePath+particlesPath+particle_type].keys():
-		
+
 		try:
-		    
+
 		    key = self.dataset._handle[basePath+particlesPath+particle_type+"/"+group].keys()
 		    if key == []:
 			particle_fields.append(particle_type+"_"+group)
-			pass			
+			pass
 		    else:
-			for direction in key:	
+			for direction in key:
 			    particle_fields.append(particle_type+"_"+group+"_"+direction)
 			    pass
-			    
-			    
+
+
 		except:
-		    
+
 		    particle_fields.append(particle_type+"_"+group)
-	# Die Namen der Partikelfelder werden zusammen mit der Partikelart der field_list angefuegt
+    # The name of the particle field and the particle type are added to field_list
 	self.field_list.extend([(str(c).split("_")[0], str(c).replace(str(c).split("_")[0], "particle")) for c in particle_fields])
-	        
+
 
     def _count_grids(self):
         # This needs to set self.num_grids
-	# Momentan gibt es nur ein groesses Grid
+    # Actually there is only one big grid
 	self.num_grids = 1
-        
 
-    # Die Dimensionen und die Groesse des Grid wird festgelegt
-    # Da es momentan nur ein Grid gibt werden hier die Daten der Simulationsbox verwendet
+    # The dimensions and the size of the grid is defined
+    # Actually there is only one grid so it has the same size like the simulationsbox
     def _parse_index(self):
         # This needs to fill the following arrays, where N is self.num_grids:
 	basePath = self.dataset._handle.attrs["basePath"]
@@ -129,15 +130,14 @@ class OpenPMDHierarchy(GridIndex):
         self.grid_particle_count[0] = self.dataset._handle[basePath+particlesPath+"/electrons/position/x"].shape[0]   #(N, 1) <= int
         #self.grid_levels = 1           #(N, 1) <= int
         #self.grids = np.empty(1, dtype='object') #(N, 1) <= grid objects
-	
+
 	self.grid_levels.flat[:] = 0
         self.grids = np.empty(self.num_grids, dtype='object')
-	# Grids muessen initialisiert werden
+	# You have to inalize the grids
         for i in range(self.num_grids):
             self.grids[i] = self.grid(i, self, self.grid_levels[i,0])
-        
-	
-    # Diese Funktion initialisiert die Grids
+
+	# This function inalize the grids
     def _populate_grid_objects(self):
         # For each grid, this must call:
         #grid._prepare_grid()
@@ -147,16 +147,16 @@ class OpenPMDHierarchy(GridIndex):
         #   grid.Parent   <= parent grid
         # This is handled by the frontend because often the children must be
         # identified.
-	
+
 	#self._reconstruct_parent_child()
-	
+
 	for i in range(self.num_grids):
             self.grids[i]._prepare_grid()
             self.grids[i]._setup_dx()
         self.max_level = 0
 
-# Ein Datenset Oabjekt einthaelt alle Informationen einer Simulation und wird
-# beim yt.load() Befehl zurueck gegeben
+# A dataset object contains all the information of the simulation and
+# is intialized with yt.load()
 class OpenPMDDataset(Dataset):
     _index_class = OpenPMDHierarchy
     _field_info_class = OpenPMDFieldInfo
@@ -164,22 +164,21 @@ class OpenPMDDataset(Dataset):
     def __init__(self, filename, dataset_type='openPMD',
                  storage_filename=None,
                  units_override=None):
-	# Hier wird festgelegt, welche Feldtypen keine Partikelfelder sind
+    # Tis defines wich of the fields are non-particle fields
         self.fluid_types += ('openPMD',)
-	# Hier wird festgelegt, welche 
+    # Tis defines wich of the fields are particle fields
 	self.particle_types = ["electrons","ions","all"]
 	self.particle_types = tuple(self.particle_types)
         self.particle_types_raw = self.particle_types
-	
-	# Hier wird die HDF5-Datei geladen und steht an mehreren Stellen im 
-	# Programm als _handle zur verfuegung 
-	# Alle _handle beziehen sich auf diese Datei
+
+    # This load a HDF5-Datei into a _handle object
+    # All _handle objects refers to the file
 	self._handle = HDF5FileHandler(filename)
         Dataset.__init__(self, filename, dataset_type,
                          units_override=units_override)
         self.storage_filename = storage_filename
 
-    # Hier wird festgelegt in welchem Einheitensystem die Daten auf der Festplatte haben
+    # This function defines the unit system of the on disk file
     def _set_code_unit_attributes(self):
         # This is where quantities are created that represent the various
         # on-disk units.  These are the currently available quantities which
@@ -189,21 +188,20 @@ class OpenPMDDataset(Dataset):
          self.length_unit = self.quan(1.0, "m")
          self.mass_unit = self.quan(1.0, "kg")
          self.time_unit = self.quan(1.0, "s")
-        
+
         #
         # These can also be set:
          self.velocity_unit = self.quan(1.0, "m/s")
          self.magnetic_unit = self.quan(1.0, "T")
-         
-    
-    # Hier werden die Simulationsparameter geladen
+
+    # The parameters of simulation are loaded
     def _parse_parameter_file(self):
         # This needs to set up the following items.  Note that these are all
         # assumed to be in code units; domain_left_edge and domain_right_edge
         # will be updated to be in code units at a later time.  This includes
         # the cosmological parameters.
 
-        
+
 	#read parameters out .h5 file
 	f = self._handle
 
@@ -212,58 +210,54 @@ class OpenPMDDataset(Dataset):
 	particlesPath = f.attrs["particlesPath"]
 	positionPath = basePath+particlesPath +"/electrons/position/"
 
-	# Hier wird die Groesse der Simulationsbox festgelegt
-	#!!! Hier ist die Groesse der Simulationsbox noch hardgecodet
+    # This defines the size of the simulaionbox
+    #!!! The size is actually hardcoded
         self.unique_identifier = 0 # no identifier
         self.parameters  = 0 # no additional parameters  <= full of code-specific items of use
-        self.domain_left_edge = np.array([ -1.49645302e-05,  -1.00407931e-06,  -3.48883032e-06]) #  <= array of float       
+        self.domain_left_edge = np.array([ -1.49645302e-05,  -1.00407931e-06,  -3.48883032e-06]) #  <= array of float
 	self.domain_right_edge  = np.array([  1.49645302e-05,   1.41565351e-06,  1.54200006e-05]) #   <= array of float64
         self.dimensionality = 3 # <= int
-	
-	fshape = []	
+
+	fshape = []
 	for i in range(3):
 	    try:
 		fshape.append(f[basePath+meshesPath+"/B/x"].shape[i])
 	    except:
 		fshape.append(1)
-        self.domain_dimensions = np.array([fshape[0], fshape[2],fshape[1]], dtype="int64") #    <= array of int64	
-	
+        self.domain_dimensions = np.array([fshape[0], fshape[2],fshape[1]], dtype="int64") #    <= array of int64
+
 	self.periodicity = (False,False,False) # <= three-element tuple of booleans
         self.current_time = f[f.attrs["basePath"]].attrs["time"] # <= simulation time in code units
 	self.refine_by = 2
 
-	
+
         #
         # We also set up cosmological information.  Set these to zero if
         # non-cosmological.
-        
-        # Es handelt sich um keine kosmologische Simulation
+
+        # It is no cosmological simulation
         self.cosmological_simulation = 0   #<= int, 0 or 1
         self.current_redshift        = 0   #<= float
         self.omega_lambda            = 0   #<= float
         self.omega_matter            = 0   #<= float
 	self.hubble_constant         = 0   #<= float
-	
-           
-    # Diese Funktion prueft ob eine mit yt.load() geladene Datei mit diesem Frontend geoeffnet werden kann
+
+    # This function test if the (with yt.load()) a file could be opened with this frontend
     @classmethod
     def _is_valid(self, *args, **kwargs):
-	#check if openPMD standard is used        
+	#check if openPMD standard is used
 	#return True
-		
-	# Ueberprueft ob die HDF5-Datei dem OpenPMD Standard entspricht
+	# Test if the HDF5-file correspond to the openPMD standard
 	need_attributes = ['openPMD', 'openPMDextension']
-        
+
         valid = True
         try:
             fileh = h5py.File(args[0], mode='r')
             for na in need_attributes:
                 if na not in fileh["/"].attrs.keys():
-                    valid = False                    
+                    valid = False
             fileh.close()
         except:
             valid = False
-        # wenn True zurueck gegeben wird entspricht die Datei dem OpenPMD Stadard
+        # if True is returned the file could be opened with the openPMD standard
         return valid
-	
-
