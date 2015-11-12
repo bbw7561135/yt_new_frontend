@@ -164,14 +164,14 @@ class OpenPMDDataset(Dataset):
     def __init__(self, filename, dataset_type='openPMD',
                  storage_filename=None,
                  units_override=None):
-    # Tis defines wich of the fields are non-particle fields
+    # This defines which of the data sets are meshes (fields)
         self.fluid_types += ('openPMD',)
-    # Tis defines wich of the fields are particle fields
+    # This defines which of the data sets are particles
 	self.particle_types = ["electrons","ions","all"]
 	self.particle_types = tuple(self.particle_types)
         self.particle_types_raw = self.particle_types
 
-    # This load a HDF5-file into a _handle object
+    # Opens a HDF5 file and stores its file handle in _handle
     # All _handle objects refers to the file
 	self._handle = HDF5FileHandler(filename)
         Dataset.__init__(self, filename, dataset_type,
@@ -210,8 +210,8 @@ class OpenPMDDataset(Dataset):
 	particlesPath = f.attrs["particlesPath"]
 	positionPath = basePath+particlesPath +"/electrons/position/"
 
-    # This defines the size of the simulaionbox
-    #!!! The size is actually hardcoded
+    # This defines the size of the simulaion box
+    # TODO !!! The size is actually hardcoded
         self.unique_identifier = 0 # no identifier
         self.parameters  = 0 # no additional parameters  <= full of code-specific items of use
         self.domain_left_edge = np.array([ -1.49645302e-05,  -1.00407931e-06,  -3.48883032e-06]) #  <= array of float

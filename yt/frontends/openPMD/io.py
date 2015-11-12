@@ -28,9 +28,9 @@ _convert_mass = ("particle_mass","mass")
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
-# This class load the file out of the HDF5-file. The file could be loaded chunk
-# for chunk. This is actually not implemented and is necessary for paralism
-
+# This class loads the data from the HDF5-file.
+# TODO Data should be loaded chunk-wise to support parallelism. Fields can be chunked arbitrarily
+#      in space, particles should be read via particlePatches.
 
 class IOHandlerOpenPMD(BaseIOHandler):
     _dataset_type = "openPMD"
@@ -134,7 +134,7 @@ class IOHandlerOpenPMD(BaseIOHandler):
 			    data = np.full(x.shape[0],pds.get(nfield).attrs["value"], "=f8")
 			else:
 			    data = np.asarray(pds.get(nfield), "=f8")
-            # Here you could multiply mass with weightening
+            # Here you could multiply mass with weighting
                         #if field in _convert_mass:
                         #    data *= g.dds.prod(dtype="f8")
 
@@ -142,7 +142,7 @@ class IOHandlerOpenPMD(BaseIOHandler):
                         yield (ptype, field), data[mask]
             if f: f.close()
 
-    # This function read the rest of the fields out of file
+    # This function reads the rest of the fields from the file
     def _read_fluid_selection(self, chunks, selector, fields, size):
         # This needs to allocate a set of arrays inside a dictionary, where the
         # keys are the (ftype, fname) tuples and the values are arrays that
@@ -200,10 +200,13 @@ class IOHandlerOpenPMD(BaseIOHandler):
 	    #data = self._handle[self.basePath+self.particlesPath+field.replace("_","/")]
 	    pass
 	else:
-        # This read the file
+        # This reads the file
 	    data = self._handle[self.basePath+self.meshPath+field.replace("_","/")]
         return np.array(data).flatten()
-    # This function is for caching. Actually this function does not work
+
+
+    # TODO This function is for caching. Actually this function does not work
+    # For parallelism and working with big files it is recommended to use it
     def _read_chunk_data(self, chunk, fields):
         # This reads the data from a single chunk, and is only used for
         # caching.

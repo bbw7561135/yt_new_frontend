@@ -78,7 +78,7 @@ def setup_poynting_vector(self):
 #
 # This class defines, which fields and particle fields could be in the HDF5-file
 # The field names have to match the names in "OpenPMDHierarchy" in data_structures.py
-# This also define the units of the fields
+# This also defines the units of the fields
 
 
 class OpenPMDFieldInfo(FieldInfoContainer):
@@ -124,7 +124,7 @@ class OpenPMDFieldInfo(FieldInfoContainer):
 
     # Here you can create functions to calculate out of existing fields the
     # values of new fields e.g. calculate out of E-field and B-field the
-    # poyntingvektor
+    # Poynting vector
     def setup_fluid_fields(self):
         # Here we do anything that might need info about the dataset.
         # You can use self.alias, self.add_output_field and self.add_field .
@@ -139,5 +139,5 @@ class OpenPMDFieldInfo(FieldInfoContainer):
 	self.add_field((ptype,"particle_kinetic_energy"),function=_kinetic_energy,units="dimensionless")
 	setup_momentum_to_velocity(self, ptype)
 
-    # !!! Have to be called to load particles
+    # !!! Has to be called to load particles
 	super(OpenPMDFieldInfo, self).setup_particle_fields(ptype)
