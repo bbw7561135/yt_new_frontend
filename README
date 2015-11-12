@@ -1,5 +1,18 @@
+This is a copy of the yt project: https://bitbucket.org/yt_analysis/yt
+
+The project was extended with a frontend to open HDF5-files which use the
+openPMD standard.
+
+Installation of the openPMD frontend:
+First install the yt library itself. Information on installing yt in the text
+below. Aftewards use the "yt instinfo" command to get the source directory of
+yt. Now replace the folder "yt/frontends" of your yt source with the folder
+"yt_new_frontend/yt/frontends" you get here from github. Now you can use the
+openPMD frontend.
+
+---ORGINAL README--------------------------------------------------------------
 Hi there!  You've just downloaded yt, an analysis tool for scientific
-datasets, generated on a variety of data platforms.  It's written in 
+datasets, generated on a variety of data platforms.  It's written in
 python and heavily leverages NumPy, Matplotlib, SymPy and Cython for a variety
 of tasks.
 
@@ -17,8 +30,7 @@ If you would rather a more automated installation, you can use the script
 doc/install_script.sh .  You will have to set the destination directory, and
 there are options available, but it should be straightforward.
 
-For more information on installation, what to do if you run into problems, or 
+For more information on installation, what to do if you run into problems, or
 ways to help development, please visit our website.
 
 Enjoy!
-
